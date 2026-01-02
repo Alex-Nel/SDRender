@@ -18,6 +18,15 @@ void RenderPoint(SDL_Renderer* renderer, ScreenPoint p)
 
 
 
+// Renders a line between two points
+void DrawLine(SDL_Renderer* renderer, ScreenPoint p1, ScreenPoint p2)
+{
+    SDL_SetRenderDrawColor(renderer, 255, 0, 80, 255);
+    SDL_RenderLine(renderer, p1.x, p1.y, p2.x, p2.y);
+}
+
+
+
 // Convert 2D vector to a point on a screen
 // Changes a vector to a pixel position
 ScreenPoint Screen(Vector2 p, WindowInfo wi)

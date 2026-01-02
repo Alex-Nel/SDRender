@@ -9,19 +9,6 @@
 #include "penguin.h"
 // #include "cube.h"
 
-int width = 800;
-int height = 800;
-int FPS = 60;
-
-
-
-
-void DrawLine(SDL_Renderer* renderer, ScreenPoint p1, ScreenPoint p2)
-{
-    SDL_SetRenderDrawColor(renderer, 255, 0, 80, 255);
-    SDL_RenderLine(renderer, p1.x, p1.y, p2.x, p2.y);
-}
-
 
 
 int main()
@@ -76,6 +63,7 @@ int main()
     float angle = 0;
 
     // Main Loop
+    printf("Starting main loop\n");
     int quit = 0;
     SDL_Event event;
     while (quit == 0)
