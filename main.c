@@ -26,6 +26,7 @@ void DrawLine(SDL_Renderer* renderer, ScreenPoint p1, ScreenPoint p2)
 
 int main()
 {
+    // SDL initialization
     if (!SDL_Init(SDL_INIT_VIDEO|SDL_INIT_EVENTS))
     {
         printf("Error init");
@@ -33,60 +34,54 @@ int main()
     }
     printf("SDL Init Success\n");
 
+    // Window information, width, height, and FPS
     WindowInfo program = {800, 800, 60};
-
     
-    SDL_Window* window = SDL_CreateWindow("Program", program.width, program.height, SDL_WINDOW_RESIZABLE);
+    // SDL Window and Renderer creation
+    SDL_Window* window = SDL_CreateWindow("SDRenderer", program.width, program.height, SDL_WINDOW_RESIZABLE);
     printf("SDL window Success\n");
     SDL_Renderer* renderer = SDL_CreateRenderer(window, NULL);
-    printf("SDL renderer Success\n");
-
-
-    // Main Loop
-    int quit = 0;
-    SDL_Event event;
-
-
-    float dz = 1;
-    float angle = 0;
+    printf("SDL renderer Success\n");   
 
 
     // Creating an object
     // -----------------------------------------------------------------------
     printf("Creating object\n");
-    // printf("Getting Mesh counts\n");
     int vertexCount = sizeof(verts) / sizeof(verts[0]);
     int faceCount = sizeof(faces) / sizeof(faces[0]);
     
-    // printf("Creating Transform\n");
-    Transform obj1Transform = {0.0, 0.0, 1.0};
-    // printf("Creating Mesh\n");
+    // Creating Transform
+    Transform obj1Transform = {0.0, 0.0, 1.5};
+
+    // Creating Mesh
     Mesh* obj1Mesh = malloc(sizeof(Mesh) + vertexCount * sizeof(Point));
-    // printf("Getting vertexCount");
     obj1Mesh->vertexCount = vertexCount;
-    // printf("Getting facesCount");
     obj1Mesh->facesCount = faceCount;
-    // printf("Copying faces\n");
     obj1Mesh->faces = malloc(faceCount * sizeof *obj1Mesh->faces);
     memcpy(obj1Mesh->faces, faces, faceCount * sizeof(*obj1Mesh->faces));
-    // printf("Creating vertices\n");
     memcpy(obj1Mesh->vertices, verts, vertexCount * sizeof(Point));
-    // printf("Creating and setting object\n");
+
+    // Creating Object using the transform and Mesh.
     Object obj1;
-    // printf("setting Transform object\n");
     obj1.transform = obj1Transform;
-    // printf("setting Mesh object\n");
     obj1.mesh = obj1Mesh;
-    // printf("Object done\n");
     // -----------------------------------------------------------------------
     
+
+    // Delta time constnat
     const float dt = 1.0/program.FPS;
+
+    // Variables for animation
+    float dz = 1;
+    float angle = 0;
+
+    // Main Loop
+    int quit = 0;
+    SDL_Event event;
     while (quit == 0)
     {
-        // printf("Polling events\n");
         while (SDL_PollEvent(&event))
         {
-            // printf("Checking event type\n");
             if (event.type == SDL_EVENT_QUIT)
                 quit = 1;
             
@@ -97,16 +92,14 @@ int main()
         }
 
         // Set Background
-        // printf("Setting background color\n");
         SDL_SetRenderDrawColor(renderer, 40, 40, 40, 255);
         SDL_RenderClear(renderer);
 
 
-        // printf("Making animation variables\n");
-        // Render Point Animation
+        // Setting animation variables
         angle = 3.14159265 / 128;
 
-        // printf("Rotating vertices\n");
+        // rotating/translating the object
         for (int i = 0; i < obj1.mesh->vertexCount; i++)
         {
             // Rotating object around an axis
@@ -115,14 +108,14 @@ int main()
             // rotate_yz(obj1Mesh, &obj1Mesh->vertices[i], angle);
 
             // Translate Object in the z direction
-            translateObjectZ(&obj1, 0.00002);
+            // translateObjectZ(&obj1, 0.00002);
 
 
             // Uncomment if you want to render the individual points
             // RenderPoint(renderer, Screen(Project(obj1, obj1->vertices[i])));
         }
 
-        // printf("Drawing faces\n");
+        // Rendering loop
         for (int i = 0; i < obj1.mesh->facesCount; ++i)
         {
             int* row = obj1.mesh->faces[i];
