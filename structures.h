@@ -36,11 +36,17 @@ typedef struct Point
     float z;
 } Point;
 
-typedef struct Transform
+// Unused Currently
+typedef struct Vector3
 {
     float x;
     float y;
     float z;
+} Vector3;
+
+typedef struct Transform
+{
+    Vector3 position;
 } Transform;
 
 typedef struct Mesh
@@ -58,6 +64,21 @@ typedef struct Object
     Mesh* mesh;
 } Object;
 
+typedef struct Quaternion
+{
+    float x;
+    float y;
+    float z;
+    float w;
+} Quaternion;
+
+typedef struct Camera
+{
+    Transform transform;
+    Quaternion rotation;
+} Camera;
+
+
 
 
 
@@ -66,6 +87,24 @@ typedef struct Object
 Object CreateObject(char* name);
 
 Mesh* CreateMesh(Point* verts, int vertexCount, int (*faces)[3], int faceCount);
+
+
+Quaternion QuatNormalize(Quaternion q);
+
+Quaternion QuaternionFromAxisAngle(float ax, float ay, float az, float angle);
+
+Quaternion QuaternionMultiply(Quaternion a, Quaternion b);
+
+Vector3 RotateVecByQuat(Vector3 v, Quaternion q);
+
+float GetPitchFromQuat(Quaternion q);
+
+Vector3 GetCameraForward(Camera* cam);
+Vector3 GetCameraRight(Camera* cam);
+
+void Camera_Move(Camera* cam, int forward, int right, int up, float speed);
+
+void Camera_MouseLook(Camera* cam, float dx, float dy, float sensitivity);
 
 
 #endif
