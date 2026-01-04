@@ -6,7 +6,7 @@ The 'structures.h' and 'render.h' headers can be used as a library (SDL is neede
 - "render.h" defines the render functions, which are SDL dependent. <br>
 - "structures.h" defines all the 3D and 2D structs which can be used for anything.
 
-Currently this only renders wireframes of models.
+Fully supports wireframe rendering and mesh rendering.
 
 ### Examples <br>
 - Full Mesh rendering <br>
