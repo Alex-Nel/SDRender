@@ -16,24 +16,25 @@ Object CreateObject(char* name)
     return obj;
 }
 
-Mesh* CreateMesh(Point* verts, int vertexCount, int (*faces)[3], int faceCount)
+Mesh* CreateMesh(Vector3* verts, int vertexCount, int (*faces)[3], int faceCount, Color color)
 {
     // Get vertex and face counts (Will have to make a solution to this)
     // int vertexCount = sizeof(verts) / sizeof(verts[0]);
     // int faceCount = sizeof(faces) / sizeof(faces[0]);
 
     // Make the Mesh and allocate the size
-    Mesh* objMesh = malloc(sizeof(Mesh) + vertexCount * sizeof(Point));
+    Mesh* objMesh = malloc(sizeof(Mesh) + vertexCount * sizeof(Vector3));
     if (!objMesh) return NULL;
 
     // Set count variables
     objMesh->vertexCount = vertexCount;
     objMesh->facesCount = faceCount;
+    objMesh->color = color;
 
     // memcpy the vertices and faces vectors
     objMesh->faces = malloc(faceCount * sizeof(*objMesh->faces));
     memcpy(objMesh->faces, faces, faceCount * sizeof(*objMesh->faces));
-    memcpy(objMesh->vertices, verts, vertexCount * sizeof(Point));
+    memcpy(objMesh->vertices, verts, vertexCount * sizeof(Vector3));
 
     return objMesh;
 }
@@ -98,6 +99,73 @@ float GetPitchFromQuat(Quaternion q)
     float cosp = 1.0f - 2.0f * (q.x * q.x + q.y * q.y);
     return atan2f(sinp, cosp);
 }
+
+
+Quaternion QuaternionInverse(Quaternion q)
+{
+    float lenSq = q.w*q.w + q.x*q.x + q.y*q.y + q.z*q.z;
+
+    if (lenSq == 0.0f)
+        return (Quaternion){0, 0, 0, 1}; // identity fallback
+
+    return (Quaternion){
+       -q.x / lenSq,
+       -q.y / lenSq,
+       -q.z / lenSq,
+       q.w / lenSq
+    };
+}
+
+
+
+Vector3 Vector3Sub(Vector3 a, Vector3 b)
+{
+    Vector3 result;
+    result.x = a.x - b.x;
+    result.y = a.y - b.y;
+    result.z = a.z - b.z;
+    return result;
+}
+
+
+Vector3 Vector3Normalize(Vector3 v)
+{
+    float length = sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
+    if (length == 0.0f) return (Vector3){0, 0, 0}; // avoid division by zero
+    Vector3 result;
+    result.x = v.x / length;
+    result.y = v.y / length;
+    result.z = v.z / length;
+    return result;
+}
+
+Vector3 Vector3Cross(Vector3 a, Vector3 b)
+{
+    Vector3 result;
+    result.x = a.y * b.z - a.z * b.y;
+    result.y = a.z * b.x - a.x * b.z;
+    result.z = a.x * b.y - a.y * b.x;
+    return result;
+}
+
+float Vector3Dot(Vector3 a, Vector3 b)
+{
+    return a.x * b.x + a.y * b.y + a.z * b.z;
+}
+
+Vector3 Vector3Scale(Vector3 v, float s)
+{
+    return (Vector3){ v.x * s, v.y * s, v.z * s };
+}
+
+Vector3 Vector3Lerp(Vector3 start, Vector3 end, float t) {
+    return (Vector3){
+        start.x + (end.x - start.x) * t,
+        start.y + (end.y - start.y) * t,
+        start.z + (end.z - start.z) * t
+    };
+}
+
 
 
 
@@ -176,4 +244,57 @@ void Camera_MouseLook(Camera* cam, float dx, float dy, float sensitivity)
     cam->rotation = QuaternionMultiply(yawQ, pitchQ);
 
     cam->rotation = QuatNormalize(cam->rotation);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+int CompareTris(const void* a, const void* b)
+{
+    const RenderTriangle* t1 = a;
+    const RenderTriangle* t2 = b;
+
+    if (t1->depth < t2->depth) return 1;
+    if (t1->depth > t2->depth) return -1;
+    return 0;
+}
+
+Vector3 CameraSpace(const Camera* cam, Vector3 world)
+{
+    // Step 1: translate
+    Vector3 v = {
+        world.x - cam->transform.position.x,
+        world.y - cam->transform.position.y,
+        world.z - cam->transform.position.z
+    };
+
+    // Step 2: rotate by inverse camera rotation
+    Quaternion invRot = QuaternionInverse(cam->rotation);
+    v = RotateVecByQuat(v, invRot);
+
+    return v;
+}
+
+Color ColorScale(Color color, float brightness)
+{
+    // Clamp brightness to [0, 1] just in case
+    if (brightness < 0.0f) brightness = 0.0f;
+    if (brightness > 1.0f) brightness = 1.0f;
+
+    Color result;
+    result.r = (uint8_t)((float)color.r * brightness);
+    result.g = (uint8_t)((float)color.g * brightness);
+    result.b = (uint8_t)((float)color.b * brightness);
+    result.a = color.a; // alpha stays the same
+
+    return result;
 }

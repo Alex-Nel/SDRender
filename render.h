@@ -4,6 +4,13 @@
 #include "structures.h"
 #include "SDL3/SDL.h"
 
+
+// // Global variables
+// RenderTriangle* triangleBuffer;
+// int triCount = 0;
+
+
+
 //////////////////////
 // Rendering functions
 //////////////////////
@@ -15,7 +22,7 @@ void RenderPoint(SDL_Renderer* renderer, ScreenPoint p);
 
 
 // Renders a line between two points
-void DrawLine(SDL_Renderer* renderer, ScreenPoint p1, ScreenPoint p2, WindowInfo wi);
+void DrawLine(SDL_Renderer* renderer, ScreenPoint p1, ScreenPoint p2, WindowInfo wi, Color color);
 
 
 
@@ -40,7 +47,13 @@ ScreenPoint Screen(Vector2 p, WindowInfo wi);
 // }
 
 
-Vector2 Project(Camera* cam, Transform* obj, Point p);
+Vector2 Project(Camera* cam, Transform* obj, Vector3 p);
+
+void Render(SDL_Renderer* renderer, WindowInfo program, Camera* cam, Object* obj);
+
+int ClipTriangleAgainstNearPlane(Vector3 inV[3], Vector3 outTris[2][3]);
+void AddRenderTriangles(Object* GlobalObjects, int numObjects, Camera* cam, Vector3 lightDirCamera);
+void RenderTriangles(SDL_Renderer* renderer, WindowInfo program);
 
 
 
@@ -51,11 +64,11 @@ Vector2 Project(Camera* cam, Transform* obj, Point p);
 //////////////////////
 
 
-void rotate_xz(Mesh* obj, Point* p, float angle);
+void rotate_xz(Mesh* obj, Vector3* p, float angle);
 
-void rotate_xy(Mesh* obj, Point* p, float angle);
+void rotate_xy(Mesh* obj, Vector3* p, float angle);
 
-void rotate_yz(Mesh* obj, Point* p, float angle);
+void rotate_yz(Mesh* obj, Vector3* p, float angle);
 
 
 void translateObjectX(Object* obj, float x);

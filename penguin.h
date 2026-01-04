@@ -2,7 +2,7 @@
 
 // These are the vertices and faces for the penger model
 
-Point verts[] = {
+Vector3 verts[] = {
     { -0.086914,  0.277547,  0.400041},
     { -0.069555,  0.329698,  0.376422},
     { -0.125429,  0.305056,  0.175577},

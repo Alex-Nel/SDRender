@@ -1,6 +1,6 @@
 #include "structures.h"
 
-Point verts[] = {
+Vector3 Cverts[] = {
     {-0.25,  0.25, 0.25},
     { 0.25,  0.25, 0.25},
     { 0.25, -0.25, 0.25},
@@ -12,7 +12,7 @@ Point verts[] = {
     {-0.25, -0.25, -0.25}
 };
 
-int faces[][3] = {
+int Cfaces[][3] = {
     {0, 1, 2},
     {0, 2, 3},
 
