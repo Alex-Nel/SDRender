@@ -9,6 +9,11 @@ The 'structures.h' and 'render.h' headers can be used as a library (SDL is neede
 Currently this only renders wireframes of models.
 
 ### Examples <br>
+- Full Mesh rendering <br>
+<img width="600" height="630" alt="Full Mesh Rendering" src="https://github.com/Alex-Nel/SDRender/blob/main/images/Full-Mesh-Multiple-Objects.PNG" />
+
+- Wireframe rendering <br>
 <img width="600" height="630" alt="Wireframe penger" src="https://github.com/user-attachments/assets/2e13656d-497b-44f9-af8c-732fc61fc2b7" />
 
+- Another Wireframe rendering <br>
 <img width="600" height="630" alt="Wireframe cube" src="https://github.com/user-attachments/assets/65377f91-470f-4905-83fe-065775556a08" />
