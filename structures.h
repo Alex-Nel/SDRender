@@ -64,9 +64,7 @@ typedef struct Vector3
 
 
 
-
-
-
+// Triangle structure used for rendering
 typedef struct RenderTriangle
 {
     Vector3 v[3];
@@ -75,17 +73,6 @@ typedef struct RenderTriangle
 } RenderTriangle;
 
 
-
-
-
-
-
-
-// A transform of an object
-typedef struct Transform
-{
-    Vector3 position;
-} Transform;
 
 
 // The mesh of an object that you would render
@@ -99,15 +86,6 @@ typedef struct Mesh
 } Mesh;
 
 
-// An object that encapsulates a transform, name, and mesh
-typedef struct Object
-{
-    Transform transform;
-    char* name;
-    Mesh* mesh;
-} Object;
-
-
 // Used to represent rotation
 typedef struct Quaternion
 {
@@ -116,6 +94,21 @@ typedef struct Quaternion
     float z;
     float w;
 } Quaternion;
+
+// A transform of an object
+typedef struct Transform
+{
+    Vector3 position;
+    Quaternion rotation;
+} Transform;
+
+// An object that encapsulates a transform, name, and mesh
+typedef struct Object
+{
+    Transform transform;
+    char* name;
+    Mesh* mesh;
+} Object;
 
 
 // A camera used to determine rendering
@@ -142,12 +135,12 @@ Mesh* CreateMesh(Vector3* verts, int vertexCount, int (*faces)[3], int faceCount
 
 
 // Quaternion operation
-Quaternion QuatNormalize(Quaternion q);
+Quaternion QuaternionNormalize(Quaternion q);
 Quaternion QuaternionFromAxisAngle(float ax, float ay, float az, float angle);
 Quaternion QuaternionMultiply(Quaternion a, Quaternion b);
 
-Vector3 RotateVecByQuat(Vector3 v, Quaternion q);
-float GetPitchFromQuat(Quaternion q);
+Vector3 RotateVectorByQuaternion(Vector3 v, Quaternion q);
+float GetPitchFromQuaternion(Quaternion q);
 
 Quaternion QuaternionInverse(Quaternion q);
 
@@ -164,6 +157,11 @@ Vector3 GetCameraForward(Camera* cam);
 Vector3 GetCameraRight(Camera* cam);
 void Camera_Move(Camera* cam, int forward, int right, int up, float speed);
 void Camera_MouseLook(Camera* cam, float dx, float dy, float sensitivity);
+
+
+void RotateObjectX(Object* obj, float angle);
+void RotateObjectY(Object* obj, float angle);
+void RotateObjectZ(Object* obj, float angle);
 
 
 

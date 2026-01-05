@@ -6,7 +6,15 @@
 
 Object CreateObject(char* name)
 {
-    Transform objTransform = {{0.0, 0.0, 1.0}};
+    Transform objTransform = {0};
+    objTransform.position.x = 0;
+    objTransform.position.y = 0;
+    objTransform.position.z = 1;
+
+    objTransform.rotation.x = 0;
+    objTransform.rotation.y = 0;
+    objTransform.rotation.z = 0;
+    objTransform.rotation.w = 1;
 
     Object obj;
     obj.transform = objTransform;
@@ -49,9 +57,15 @@ Mesh* CreateMesh(Vector3* verts, int vertexCount, int (*faces)[3], int faceCount
 // Functions for Quaternions
 //
 
-Quaternion QuatNormalize(Quaternion q)
+Quaternion QuaternionNormalize(Quaternion q)
 {
     float len = sqrtf(q.x*q.x + q.y*q.y + q.z*q.z + q.w*q.w);
+    
+    if (len == 0)
+        return (Quaternion){0, 0, 0, 1};
+    
+    float inv = 1.0f / len;
+
     return (Quaternion){ q.x/len, q.y/len, q.z/len, q.w/len };
 }
 
@@ -61,7 +75,7 @@ Quaternion QuaternionFromAxisAngle(float ax, float ay, float az, float angle)
     float half = angle * 0.5f;
     float s = sinf(half);
 
-    return QuatNormalize((Quaternion){
+    return QuaternionNormalize((Quaternion){
         ax * s,
         ay * s,
         az * s,
@@ -81,18 +95,42 @@ Quaternion QuaternionMultiply(Quaternion a, Quaternion b)
 }
 
 
-Vector3 RotateVecByQuat(Vector3 v, Quaternion q)
-{
-    // v' = q * v * q^-1
-    Quaternion vq = {v.x, v.y, v.z, 0};
-    Quaternion qi = {-q.x, -q.y, -q.z, q.w};
+// Vector3 RotateVectorByQuaternion(Vector3 v, Quaternion q)
+// {
+//     // v' = q * v * q^-1
+//     Quaternion vq = {v.x, v.y, v.z, 0};
+//     Quaternion qi = {-q.x, -q.y, -q.z, q.w};
 
-    Quaternion r = QuaternionMultiply(QuaternionMultiply(q, vq), qi);
-    return (Vector3){ r.x, r.y, r.z };
+//     Quaternion r = QuaternionMultiply(QuaternionMultiply(q, vq), qi);
+//     return (Vector3){ r.x, r.y, r.z };
+// }
+
+Vector3 RotateVectorByQuaternion(Vector3 v, Quaternion q)
+{
+    // Extract the vector part of the quaternion
+    Vector3 u = {q.x, q.y, q.z};
+    float s = q.w;
+
+    // Standard formula: v + 2.0 * cross(u, cross(u, v) + s * v)
+    
+    // 1. dot(u, v)
+    float dot_uv = u.x * v.x + u.y * v.y + u.z * v.z;
+    // 2. dot(u, u)
+    float dot_uu = u.x * u.x + u.y * u.y + u.z * u.z;
+    
+    // 3. Scale v by (s*s - dot_uu)
+    float w_sq_minus_dot_uu = (s * s) - dot_uu;
+    
+    Vector3 result;
+    result.x = (w_sq_minus_dot_uu * v.x) + (2.0f * dot_uv * u.x) + (2.0f * s * (u.y * v.z - u.z * v.y));
+    result.y = (w_sq_minus_dot_uu * v.y) + (2.0f * dot_uv * u.y) + (2.0f * s * (u.z * v.x - u.x * v.z));
+    result.z = (w_sq_minus_dot_uu * v.z) + (2.0f * dot_uv * u.z) + (2.0f * s * (u.x * v.y - u.y * v.x));
+    
+    return result;
 }
 
 
-float GetPitchFromQuat(Quaternion q)
+float GetPitchFromQuaternion(Quaternion q)
 {
     // Standard formula: pitch = arcsin(2*(w*y - z*x))
     float sinp = 2.0f * (q.x + q.y * q.z * q.w);
@@ -174,12 +212,12 @@ Vector3 Vector3Lerp(Vector3 start, Vector3 end, float t) {
 Vector3 GetCameraForward(Camera* cam)
 {
     // Forward in camera space is +Z or -Z depending on convention; here we use -Z
-    return RotateVecByQuat((Vector3){0, 0, 1}, cam->rotation);
+    return RotateVectorByQuaternion((Vector3){0, 0, 1}, cam->rotation);
 }
 
 Vector3 GetCameraRight(Camera* cam)
 {
-    return RotateVecByQuat((Vector3){1, 0, 0}, cam->rotation);
+    return RotateVectorByQuaternion((Vector3){1, 0, 0}, cam->rotation);
 }
 
 
@@ -243,7 +281,44 @@ void Camera_MouseLook(Camera* cam, float dx, float dy, float sensitivity)
     // Order matters: yaw in world space, pitch in local space
     cam->rotation = QuaternionMultiply(yawQ, pitchQ);
 
-    cam->rotation = QuatNormalize(cam->rotation);
+    cam->rotation = QuaternionNormalize(cam->rotation);
+}
+
+
+
+
+
+
+void RotateObjectX(Object* obj, float angle)
+{
+    Vector3 axis = {1.0f, 0.0f, 0.0f};
+    Quaternion rotStep = QuaternionFromAxisAngle(axis.x, axis.y, axis.z, angle);
+    
+    // Apply new rotation ON TOP of existing rotation
+    obj->transform.rotation = QuaternionMultiply(obj->transform.rotation, rotStep);
+    
+    // Normalize occasionally to keep it clean
+    obj->transform.rotation = QuaternionNormalize(obj->transform.rotation);
+}
+
+
+void RotateObjectY(Object* obj, float angle)
+{
+    Vector3 axis = {0.0f, 1.0f, 0.0f};
+    Quaternion rotStep = QuaternionFromAxisAngle(axis.x, axis.y, axis.z, angle);
+    
+    obj->transform.rotation = QuaternionMultiply(obj->transform.rotation, rotStep);
+    obj->transform.rotation = QuaternionNormalize(obj->transform.rotation);
+}
+
+
+void RotateObjectZ(Object* obj, float angle)
+{
+    Vector3 axis = {0.0f, 0.0f, 1.0f};
+    Quaternion rotStep = QuaternionFromAxisAngle(axis.x, axis.y, axis.z, angle);
+    
+    obj->transform.rotation = QuaternionMultiply(obj->transform.rotation, rotStep);
+    obj->transform.rotation = QuaternionNormalize(obj->transform.rotation);
 }
 
 
@@ -257,7 +332,9 @@ void Camera_MouseLook(Camera* cam, float dx, float dy, float sensitivity)
 
 
 
-
+///
+/// Function compares triangles for depth testing
+/// 
 int CompareTris(const void* a, const void* b)
 {
     const RenderTriangle* t1 = a;
@@ -265,25 +342,34 @@ int CompareTris(const void* a, const void* b)
 
     if (t1->depth < t2->depth) return 1;
     if (t1->depth > t2->depth) return -1;
+
     return 0;
 }
 
+
+///
+/// This function converts a vector into camera space for projection
+///
 Vector3 CameraSpace(const Camera* cam, Vector3 world)
 {
-    // Step 1: translate
+    // Step 1: translate a vector so that the camera is a (0, 0, 0)
     Vector3 v = {
         world.x - cam->transform.position.x,
         world.y - cam->transform.position.y,
         world.z - cam->transform.position.z
     };
 
-    // Step 2: rotate by inverse camera rotation
+    // Step 2: rotate by inverse camera rotation so movement feels natural
     Quaternion invRot = QuaternionInverse(cam->rotation);
-    v = RotateVecByQuat(v, invRot);
+    v = RotateVectorByQuaternion(v, invRot);
 
     return v;
 }
 
+
+///
+/// Scales a color by a certain brightness value
+///
 Color ColorScale(Color color, float brightness)
 {
     // Clamp brightness to [0, 1] just in case

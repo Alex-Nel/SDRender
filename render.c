@@ -52,9 +52,6 @@ void DrawLine(SDL_Renderer* renderer, ScreenPoint p1, ScreenPoint p2, WindowInfo
 // Changes a vector to a pixel position
 ScreenPoint Screen(Vector2 p, WindowInfo wi)
 {
-    // if (p.x == NAN && p.y == NAN)
-    //     return (ScreenPoint){NAN, NAN};
-
     if (isnan(p.x) || isnan(p.y))
         return (ScreenPoint){NAN, NAN};
 
@@ -85,24 +82,34 @@ ScreenPoint Screen(Vector2 p, WindowInfo wi)
 // x' = x / z
 // y' = y / z
 // Within the range [-1 to 1]
-// Vector2 Project(Transform* obj, Point p)
-// {
-//     Vector2 v = {
-//         (obj->x + p.x) / (obj->z + p.z),
-//         (obj->y + p.y) / (obj->z + p.z)
-//     };
-//     // Vector2 v = {p.x / p.z, p.y / p.z};
-//     return v;
-// }
-
-
-Vector2 Project(Camera* cam, Transform* obj, Vector3 p)
+Vector2 Project(Vector3 p)
 {
+    if (p.z <= 0.01f)
+        return (Vector2){NAN, NAN};
+    
+    Vector2 v = {
+        p.x / p.z,
+        p.y / p.z
+    };
+
+    return v;
+}
+
+
+
+///
+/// Old projection function that transform objects as well
+///
+Vector2 TransformAndProject(Camera* cam, Transform* obj, Vector3 p)
+{
+
+    Vector3 rotated = RotateVectorByQuaternion(p, obj->rotation);
+
     // World position
     Vector3 world = {
-        obj->position.x + p.x,
-        obj->position.y + p.y,
-        obj->position.z + p.z
+        obj->position.x + rotated.x,
+        obj->position.y + rotated.y,
+        obj->position.z + rotated.z
     };
 
     // Camera-relative position (view space)
@@ -119,7 +126,7 @@ Vector2 Project(Camera* cam, Transform* obj, Vector3 p)
         cam->rotation.w 
     };
     
-    Vector3 view = RotateVecByQuat(rel, inv);
+    Vector3 view = RotateVectorByQuaternion(rel, inv);
 
     if (view.z <= 0.01f)
         return (Vector2){NAN, NAN};
@@ -136,10 +143,11 @@ Vector2 Project(Camera* cam, Transform* obj, Vector3 p)
 }
 
 
+
 //
-// Renders an objects mesh to an SDL renderer
+// Renders an objects mesh to an SDL renderer as a wireframe
 //
-void Render(SDL_Renderer* renderer, WindowInfo program, Camera* cam, Object* obj)
+void RenderWireframe(SDL_Renderer* renderer, WindowInfo program, Camera* cam, Object* obj)
 {
     if (obj->mesh == NULL)
         return;
@@ -153,9 +161,34 @@ void Render(SDL_Renderer* renderer, WindowInfo program, Camera* cam, Object* obj
         {
             int a = row[j];
             int b = row[(j+1)%3];
+
+            Vector3 rotatedV = {0};
+            Vector3 worldV = {0};
+
+            // Rotate the mesh of vertex A
+            rotatedV = RotateVectorByQuaternion(obj->mesh->vertices[a], obj->transform.rotation);
+            worldV.x = obj->transform.position.x + rotatedV.x;
+            worldV.y = obj->transform.position.y + rotatedV.y;
+            worldV.z = obj->transform.position.z + rotatedV.z;
+
+            Vector3 camA = CameraSpace(cam, worldV);
+
+            // Rotate the mesh of vertex B
+            rotatedV = RotateVectorByQuaternion(obj->mesh->vertices[b], obj->transform.rotation);
+            worldV.x = obj->transform.position.x + rotatedV.x;
+            worldV.y = obj->transform.position.y + rotatedV.y;
+            worldV.z = obj->transform.position.z + rotatedV.z;
+
+            Vector3 camB = CameraSpace(cam, worldV);
+
+            // If the vertex is behind the camera, skip it
+            if (camA.z <= 0.01f || camB.z <= 0.01f)
+                continue;
+
+            // Draw a line between points A and B
             DrawLine(renderer,
-                Screen(Project(cam, &obj->transform, obj->mesh->vertices[a]), program),
-                Screen(Project(cam, &obj->transform, obj->mesh->vertices[b]), program),
+                Screen(Project(camA), program),
+                Screen(Project(camB), program),
                 program,
                 obj->mesh->color
             );
@@ -248,14 +281,13 @@ int ClipTriangleAgainstNearPlane(Vector3 inV[3], Vector3 outTris[2][3])
 
 
 
-
-
-
-
+//////////////////////////////////////////////////////////////////
+/// Fills the triangleBuffer array with faces from all objects ///
+//////////////////////////////////////////////////////////////////
 
 void AddRenderTriangles(Object* GlobalObjects, int numObjects, Camera* cam, Vector3 lightDirCamera)
 {
-    const float nearPlane = 0.05f;
+    const float nearPlane = 0.01f;
     int facesCount = 0;
 
 
@@ -283,23 +315,33 @@ void AddRenderTriangles(Object* GlobalObjects, int numObjects, Camera* cam, Vect
 
             Vector3 camVerts[3];
 
+            // Rotate Mesh to follow the objects rotation
             for (int k = 0; k < 3; ++k)
             {
+                Vector3 localVert = obj.mesh->vertices[row[k]];
+
+                Vector3 rotatedVert = RotateVectorByQuaternion(localVert, obj.transform.rotation);
+
                 Vector3 world = {
-                    obj.transform.position.x + obj.mesh->vertices[row[k]].x,
-                    obj.transform.position.y + obj.mesh->vertices[row[k]].y,
-                    obj.transform.position.z + obj.mesh->vertices[row[k]].z
+                    obj.transform.position.x + rotatedVert.x,
+                    obj.transform.position.y + rotatedVert.y,
+                    obj.transform.position.z + rotatedVert.z
                 };
 
                 camVerts[k] = CameraSpace(cam, world);
             }
 
 
+            // If vertices are behind the camera, don't add
             if (camVerts[0].z <= 0 || camVerts[1].z <= 0 || camVerts[2].z <= 0)
                 continue;
 
 
-            // --- Begin near-plane clipping ---
+
+            ///////////////////////////////////////
+            // --- Begin near-plane clipping --- //
+            ///////////////////////////////////////
+
             int inFront[3];
             int countInFront = 0;
             for (int k = 0; k < 3; k++)
@@ -387,36 +429,70 @@ void AddRenderTriangles(Object* GlobalObjects, int numObjects, Camera* cam, Vect
                 clipped[2] = vi2;
                 clippedCount = 3;
             }
-            // --- End near-plane clipping ---
+            // --- End near-plane clipping --- //
+
+
+
+            // Filling in the triangle buffer with the clipped array data
+            for (int t = 0; t < clippedCount; t += 3)
+            {
+                Vector3 v0 = clipped[t + 0];
+                Vector3 v1 = clipped[t + 1];
+                Vector3 v2 = clipped[t + 2];
+
+                // Recalculate normal for the new clipped fragment
+                Vector3 ab = Vector3Sub(v1, v0);
+                Vector3 ac = Vector3Sub(v2, v0);
+                Vector3 normal = Vector3Normalize(Vector3Cross(ab, ac));
+
+                // Recalculate brightness
+                float brightness = Vector3Dot(normal, Vector3Scale(lightDirCamera, -1.0f));
+                if (brightness < 0) brightness = 0;
+                brightness = 0.3f + 0.9f * brightness;
+                if (brightness > 1) brightness = 1;
+
+                float depth = (v0.z + v1.z + v2.z) / 3.0f;
+
+                triangleBuffer[triCount++] = (RenderTriangle){
+                    { v0, v1, v2 }, // <--- Use v0, v1, v2 here!
+                    depth,
+                    ColorScale(obj.mesh->color, brightness)
+                };
+            }
+            
+            // ----------- Old routine ----------- //
+            // -- Doesn't use the clipped array -- //
+
+            // Vector3 ab = Vector3Sub(camVerts[1], camVerts[0]);
+            // Vector3 ac = Vector3Sub(camVerts[2], camVerts[0]);
+            // Vector3 normal = Vector3Normalize(Vector3Cross(ab, ac));
+
+            // // Back-face culling (Don't use right now, undefined behavior)
+            // // if (normal.z >= 0) continue;
+            // // if (Vector3Dot(normal, camVerts[0]) >= 0) continue;
+
+            // // Compute brightness (directional light)
+            // float brightness = Vector3Dot(normal, Vector3Scale(lightDirCamera, -1.0f));
+            // if (brightness < 0) brightness = 0;
+            // brightness = 0.3f + 0.9f * brightness;
+            // if (brightness > 1) brightness = 1;
+
 
             
-            
-            Vector3 ab = Vector3Sub(camVerts[1], camVerts[0]);
-            Vector3 ac = Vector3Sub(camVerts[2], camVerts[0]);
-            Vector3 normal = Vector3Normalize(Vector3Cross(ab, ac));
+            // float depth = (camVerts[0].z + camVerts[1].z + camVerts[2].z) / 3.0f;
 
-            // Back-face culling (Don't use right now, undefined behavior)
-            // if (normal.z >= 0) continue;
-            // if (Vector3Dot(normal, camVerts[0]) >= 0) continue;
+            // triangleBuffer[triCount++] = (RenderTriangle){
+            //     { camVerts[0], camVerts[1], camVerts[2] },
+            //     depth,
+            //     ColorScale(obj.mesh->color, brightness)
+            // };
 
-            // Compute brightness (directional light)
-            float brightness = Vector3Dot(normal, Vector3Scale(lightDirCamera, -1.0f));
-            if (brightness < 0) brightness = 0;
-            brightness = 0.3f + 0.9f * brightness;
-            if (brightness > 1) brightness = 1;
-
-
-            
-            float depth = (camVerts[0].z + camVerts[1].z + camVerts[2].z) / 3.0f;
-
-            triangleBuffer[triCount++] = (RenderTriangle){
-                { camVerts[0], camVerts[1], camVerts[2] },
-                depth,
-                ColorScale(obj.mesh->color, brightness)
-            };
+            // ---------- Old routine ---------- //
 
         }
     }
+
+    // Sort the vertices according to depth
     qsort(triangleBuffer, triCount, sizeof(RenderTriangle), CompareTris);
 }
 
@@ -424,8 +500,9 @@ void AddRenderTriangles(Object* GlobalObjects, int numObjects, Camera* cam, Vect
 
 
 
-
-
+/////////////////////////////////////////////////
+/// Renders all faces in triangleBuffer array ///
+/////////////////////////////////////////////////
 
 void RenderTriangles(SDL_Renderer* renderer, WindowInfo program)
 {
@@ -456,18 +533,34 @@ void RenderTriangles(SDL_Renderer* renderer, WindowInfo program)
 
         SDL_RenderGeometry(renderer, NULL, triangle, 3, NULL, 0);
     }
+
+    // Reset triangleBuffer and triCount to fill it again next frame
     free(triangleBuffer);
     triCount = 0;
 }
 
 
 
-// void RenderObjects(Object* GlobalObjects, int numObjects, Camera* cam, Vector3 lightDirCamera)
-// {
-
-// }
 
 
+////////////////////////////////////////////////////////////////////////////
+/// This function encapsulates all rendering steps according to settings ///
+////////////////////////////////////////////////////////////////////////////
+
+void RenderObjects(SDL_Renderer* renderer, WindowInfo program, Object* GlobalObjects, int numObjects, Camera* cam, Vector3 lightDirCamera, bool Wireframe)
+{
+    // Depending on whether Wireframe is true or not, different rendering functions are used.
+    if (Wireframe == true)
+    {
+        for (int i = 0; i < numObjects; ++i)
+            RenderWireframe(renderer, program, cam, &GlobalObjects[i]);
+    }
+    else
+    {
+        AddRenderTriangles(GlobalObjects, numObjects, cam, lightDirCamera);
+        RenderTriangles(renderer, program);
+    }
+}
 
 
 
@@ -475,20 +568,9 @@ void RenderTriangles(SDL_Renderer* renderer, WindowInfo program)
 
 
 
-
-
-
-
-
-
-
-
-
-
-/////////////////////////
-// Rotation functions ///
-/////////////////////////
-
+/////////////////////////////////////////////////////////////////////
+// Old Rotation functions - These rotate the mesh, not the object ///
+/////////////////////////////////////////////////////////////////////
 
 void rotate_xz(Mesh* obj, Vector3* p, float angle)
 {

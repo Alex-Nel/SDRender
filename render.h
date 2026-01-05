@@ -47,13 +47,17 @@ ScreenPoint Screen(Vector2 p, WindowInfo wi);
 // }
 
 
-Vector2 Project(Camera* cam, Transform* obj, Vector3 p);
+Vector2 Project(Vector3 p);
 
-void Render(SDL_Renderer* renderer, WindowInfo program, Camera* cam, Object* obj);
+Vector2 TransformAndProject(Camera* cam, Transform* obj, Vector3 p);
+
+void RenderWireframe(SDL_Renderer* renderer, WindowInfo program, Camera* cam, Object* obj);
 
 int ClipTriangleAgainstNearPlane(Vector3 inV[3], Vector3 outTris[2][3]);
 void AddRenderTriangles(Object* GlobalObjects, int numObjects, Camera* cam, Vector3 lightDirCamera);
 void RenderTriangles(SDL_Renderer* renderer, WindowInfo program);
+
+void RenderObjects(SDL_Renderer* renderer, WindowInfo program, Object* GlobalObjects, int numObjects, Camera* cam, Vector3 lightDirCamera, bool Wireframe);
 
 
 

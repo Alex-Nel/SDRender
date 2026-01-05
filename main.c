@@ -23,7 +23,11 @@ void AddGlobalObject(Object obj)
     if (GlobalObjectCount >= GlobalObjectCapacity)
     {
         // Increase capacity
-        GlobalObjectCapacity = (GlobalObjectCapacity == 0) ? 8 : GlobalObjectCapacity * 2;
+        if (GlobalObjectCapacity == 0)
+            GlobalObjectCapacity = 2;
+        else
+            GlobalObjectCapacity *= 2;
+        
         GlobalObjects = realloc(GlobalObjects, sizeof(Object) * GlobalObjectCapacity);
     }
     
@@ -47,17 +51,27 @@ int main(int argc, char *argv[])
     printf("SDL Init Success\n");
 
     // Window information, width, height, and FPS
-    WindowInfo program = {800, 800, 100};
+    WindowInfo program = {800, 800, 120};
     
     // SDL Window and Renderer creation
     SDL_Window* window = SDL_CreateWindow("SDRenderer", program.width, program.height, SDL_WINDOW_RESIZABLE);
     printf("SDL window Success\n");
+
+    ///////// GPU renderer
     SDL_Renderer* renderer = SDL_CreateRenderer(window, NULL);
+    SDL_Surface* windowSurface = NULL;
+    SDL_Surface* surface = NULL;
+
+    ///////// Software renderer
+    // SDL_Surface* surface = SDL_CreateSurface(program.width, program.height, SDL_PIXELFORMAT_RGBA8888);
+    // SDL_Surface* windowSurface = SDL_GetWindowSurface(window);
+    // SDL_Renderer* renderer = SDL_CreateSoftwareRenderer(surface);
+
+
+    printf("Renderer: %s\n", SDL_GetRendererName(renderer));
     printf("SDL renderer Success\n");
 
     SDL_SetWindowRelativeMouseMode(window, true);
-
-
     
 
 
@@ -123,7 +137,7 @@ int main(int argc, char *argv[])
     float dx, dy;
 
     // Values for camera speed
-    float speed = 0.02f;
+    float speed = 0.02f * dt;
     int forward = 0, right = 0, up = 0;
 
     // Values for keyboard input:
@@ -139,6 +153,7 @@ int main(int argc, char *argv[])
     printf("Starting main loop\n");
     int quit = 0;
     int mouseGrabbed = 1;
+    bool Wireframe = false;
     SDL_Event event;
     while (quit == 0)
     {
@@ -152,6 +167,16 @@ int main(int argc, char *argv[])
             if (event.type == SDL_EVENT_WINDOW_RESIZED)
             {
                 SDL_GetWindowSizeInPixels(window, &program.width, &program.height);
+
+                // For Software Renderer
+                if (SDL_GetRendererName(renderer)[0] == 's')
+                {
+                    windowSurface = SDL_GetWindowSurface(window);
+                    SDL_DestroySurface(surface);
+                    surface = SDL_CreateSurface(program.width, program.height, SDL_PIXELFORMAT_RGBA8888);
+                    SDL_DestroyRenderer(renderer);
+                    renderer = SDL_CreateSoftwareRenderer(surface);
+                }
             }
 
             // If the button gets pressed (specifically the escape key)
@@ -159,9 +184,12 @@ int main(int argc, char *argv[])
             {
                 if (event.key.scancode == SDL_SCANCODE_ESCAPE)
                 {
-                    printf("Escape pressed\n");
                     mouseGrabbed = false;
                     SDL_SetWindowRelativeMouseMode(window, mouseGrabbed);
+                }
+                if (event.key.scancode == SDL_SCANCODE_P)
+                {
+                    Wireframe = !Wireframe;
                 }
             }
 
@@ -197,17 +225,18 @@ int main(int argc, char *argv[])
 
         // Change speed if left shift or left control are held
         if (state[SDL_SCANCODE_LSHIFT] == true)
-            speed = 0.06f;
+            speed = 6.0f * dt;
         else if (state[SDL_SCANCODE_LCTRL] == true)
-            speed = 0.005f;
+            speed = 0.5f * dt;
         else
-            speed = 0.03f;
+            speed = 3.0f * dt;
 
         // Move camera
         Camera_Move(&cam, forward, right, up, speed);
 
         // Setting animation variables
-        angle = 3.14159265 / 128;
+        // angle = 3.14159265 / 128;
+        angle = 100.0f * (3.14159265f / 180.0f) * dt;
 
 
         /////////////////////////
@@ -215,206 +244,48 @@ int main(int argc, char *argv[])
         /////////////////////////
 
 
-        Vector3 lightDirCamera = RotateVecByQuat(lightDirWorld, QuaternionInverse(cam.rotation));
+        Vector3 lightDirCamera = RotateVectorByQuaternion(lightDirWorld, QuaternionInverse(cam.rotation));
 
         // Set Background
         SDL_SetRenderDrawColor(renderer, 40, 40, 40, 255);
         SDL_RenderClear(renderer);
 
-        // rotating/translating the object
-        for (int i = 0; i < obj1.mesh->vertexCount; i++)
-        {
-            // Uncomment these to rotate the object around an axis
-            // rotate_xz(obj1.mesh, &obj1.mesh->vertices[i], -angle);
-            // rotate_xy(obj1.mesh, &obj1.mesh->vertices[i], -angle);
-            // rotate_yz(obj1.mesh, &obj1.mesh->vertices[i], angle);
-
-            // Uncomment to Translate Object in the z direction
-            // translateObjectZ(&obj1, 0.00002);
-
-
-            // Uncomment if you want to render the individual points
-            // RenderPoint(renderer, Screen(Project(obj1, obj1->vertices[i])));
-        }
-
-        // Render objects
-        // Render(renderer, program, &cam, &obj1);
-        Render(renderer, program, &cam, &obj2);
-
-
-        // printf("Starting triangle rendering\n");
-
-        AddRenderTriangles(GlobalObjects, GlobalObjectCount, &cam, lightDirCamera);
-        // printf("Rendering triangles now\n");
-        RenderTriangles(renderer, program);
-
-
-
-
-        ////// 
-        ////// Triangle Making of obj1
-        //////
-
-
-        // RenderTriangle* tris = malloc(sizeof(RenderTriangle) * (obj1.mesh->facesCount + obj2.mesh->facesCount));
-        // int triCount = 0;
-        // // Geometry rendering
-        // for (int i = 0; i < obj1.mesh->facesCount; ++i)
+        // // rotating/translating the object for animation
+        // for (int i = 0; i < obj1.mesh->vertexCount; i++)
         // {
-        //     int* row = obj1.mesh->faces[i];
+        //     // Uncomment these to rotate the object around an axis
+        //     // rotate_xz(obj1.mesh, &obj1.mesh->vertices[i], -angle);
+        //     // rotate_xy(obj1.mesh, &obj1.mesh->vertices[i], -angle);
+        //     // rotate_yz(obj1.mesh, &obj1.mesh->vertices[i], angle);
 
-        //     Vector3 camVerts[3];
-
-        //     for (int k = 0; k < 3; ++k)
-        //     {
-        //         Vector3 world = {
-        //             obj1.transform.position.x + obj1.mesh->vertices[row[k]].x,
-        //             obj1.transform.position.y + obj1.mesh->vertices[row[k]].y,
-        //             obj1.transform.position.z + obj1.mesh->vertices[row[k]].z
-        //         };
-
-        //         camVerts[k] = CameraSpace(&cam, world);
-        //     }
+        //     // Uncomment to Translate Object in the z direction
+        //     // translateObjectZ(&obj1, 0.00002);
 
 
-        //     if (camVerts[0].z <= 0 || camVerts[1].z <= 0 || camVerts[2].z <= 0)
-        //         continue;
-            
-            
-        //     Vector3 ab = Vector3Sub(camVerts[1], camVerts[0]);
-        //     Vector3 ac = Vector3Sub(camVerts[2], camVerts[0]);
-        //     Vector3 normal = Vector3Normalize(Vector3Cross(ab, ac));
-
-        //     // Back-face culling
-        //     if (normal.z >= 0) continue;
-
-        //     // Compute brightness (directional light)
-        //     float brightness = Vector3Dot(normal, Vector3Scale(lightDirCamera, -1.0f));
-        //     if (brightness < 0) brightness = 0;
-        //     brightness = 0.3f + 0.9f * brightness;
-        //     if (brightness > 1) brightness = 1;
-
-
-            
-        //     float depth = (camVerts[0].z + camVerts[1].z + camVerts[2].z) / 3.0f;
-
-        //     tris[triCount++] = (RenderTriangle){
-        //         { camVerts[0], camVerts[1], camVerts[2] },
-        //         depth,
-        //         ColorScale(obj1.mesh->color, brightness)
-        //     };
-
+        //     // Uncomment if you want to render the individual points
+        //     // RenderPoint(renderer, Screen(Project(obj1, obj1->vertices[i])));
         // }
 
-
-        // ////// 
-        // ////// Triangle making of obj2
-        // //////
-
-        // // Geometry rendering
-        // for (int i = 0; i < obj2.mesh->facesCount; ++i)
-        // {
-        //     int* row = obj2.mesh->faces[i];
-
-        //     Vector3 camVerts[3];
-
-        //     for (int k = 0; k < 3; ++k)
-        //     {
-        //         Vector3 world = {
-        //             obj2.transform.position.x + obj2.mesh->vertices[row[k]].x,
-        //             obj2.transform.position.y + obj2.mesh->vertices[row[k]].y,
-        //             obj2.transform.position.z + obj2.mesh->vertices[row[k]].z
-        //         };
-
-        //         camVerts[k] = CameraSpace(&cam, world);
-        //     }
+        RotateObjectZ(&GlobalObjects[0], -angle);
+        RotateObjectX(&GlobalObjects[0], angle);
+        RotateObjectY(&GlobalObjects[0], -angle);
 
 
-        //     if (camVerts[0].z <= 0 || camVerts[1].z <= 0 || camVerts[2].z <= 0)
-        //         continue;
-
-
-        //     Vector3 ab = Vector3Sub(camVerts[1], camVerts[0]);
-        //     Vector3 ac = Vector3Sub(camVerts[2], camVerts[0]);
-        //     Vector3 normal = Vector3Normalize(Vector3Cross(ab, ac));
-
-        //     // Back-face culling
-        //     if (normal.z >= 0) continue;
-
-        //     // Compute brightness (directional light)
-        //     float brightness = Vector3Dot(normal, Vector3Scale(lightDirCamera, -1.0f));
-        //     if (brightness < 0) brightness = 0;
-        //     brightness = 0.3f + 0.9f * brightness;
-        //     if (brightness > 1) brightness = 1;
-
-
-            
-        //     float depth = (camVerts[0].z + camVerts[1].z + camVerts[2].z) / 3.0f;
-
-        //     tris[triCount++] = (RenderTriangle){
-        //         { camVerts[0], camVerts[1], camVerts[2] },
-        //         depth,
-        //         ColorScale(obj2.mesh->color, brightness)
-        //     };
-
-        //     // SDL_RenderGeometry(renderer, NULL, triangle, 3, NULL, 0);
-        // }
-
-        // qsort(tris, triCount, sizeof(RenderTriangle), CompareTris);
-
-
-        ////// 
-        ////// Rendering geometry
-        //////
-
-        // for (int i = 0; i < triCount; ++i)
-        // {
-        //     RenderTriangle* t = &tris[i];
-
-        //     SDL_Vertex triangle[3];
-
-        //     for (int k = 0; k < 3; ++k)
-        //     {
-        //         Vector2 projected = {
-        //             t->v[k].x / t->v[k].z,
-        //             t->v[k].y / t->v[k].z
-        //         };
-
-        //         ScreenPoint sp = Screen(projected, program);
-
-        //         triangle[k].position.x = sp.x;
-        //         triangle[k].position.y = sp.y;
-        //         triangle[k].color.a = (float)t->color.a / (float)255;
-        //         triangle[k].color.b = (float)t->color.b / (float)255;
-        //         triangle[k].color.g = (float)t->color.g / (float)255;
-        //         triangle[k].color.r = (float)t->color.r / (float)255;
-        //         triangle[k].tex_coord.x = 0;
-        //         triangle[k].tex_coord.y = 0;
-        //     }
-
-        //     SDL_RenderGeometry(renderer, NULL, triangle, 3, NULL, 0);
-        // }
-
-        ////// 
-        ////// Rendering geometry
-        //////
-
-
-
-
-
-
-
-
-
-
-
-
+        // // Render all objects
+        RenderObjects(renderer, program, GlobalObjects, GlobalObjectCount, &cam, lightDirCamera, Wireframe);
         
 
 
         // Needed to keep image
         SDL_RenderPresent(renderer);
+
+        // Needed if using a software renderer
+        
+        if (SDL_GetRendererName(renderer)[0] == 's')
+        {
+            SDL_BlitSurface(surface, NULL, windowSurface, NULL);
+            SDL_UpdateWindowSurface(window);
+        }
 
         SDL_Delay(1000/program.FPS);
     }
