@@ -165,20 +165,30 @@ void RenderWireframe(SDL_Renderer* renderer, WindowInfo program, Camera* cam, Ob
             Vector3 rotatedV = {0};
             Vector3 worldV = {0};
 
-            // Rotate the mesh of vertex A
-            rotatedV = RotateVectorByQuaternion(obj->mesh->vertices[a], obj->transform.rotation);
+            // First scale, then Rotate vertex A
+            worldV = obj->mesh->vertices[a];
+            worldV.x *= obj->transform.scale.x;
+            worldV.y *= obj->transform.scale.y;
+            worldV.z *= obj->transform.scale.z;
+            rotatedV = RotateVectorByQuaternion(worldV, obj->transform.rotation);
             worldV.x = obj->transform.position.x + rotatedV.x;
             worldV.y = obj->transform.position.y + rotatedV.y;
             worldV.z = obj->transform.position.z + rotatedV.z;
 
+            // Put vertex A in camera space
             Vector3 camA = CameraSpace(cam, worldV);
 
-            // Rotate the mesh of vertex B
-            rotatedV = RotateVectorByQuaternion(obj->mesh->vertices[b], obj->transform.rotation);
+            // First scale, then Rotate vertex B
+            worldV = obj->mesh->vertices[b];
+            worldV.x *= obj->transform.scale.x;
+            worldV.y *= obj->transform.scale.y;
+            worldV.z *= obj->transform.scale.z;
+            rotatedV = RotateVectorByQuaternion(worldV, obj->transform.rotation);
             worldV.x = obj->transform.position.x + rotatedV.x;
             worldV.y = obj->transform.position.y + rotatedV.y;
             worldV.z = obj->transform.position.z + rotatedV.z;
 
+            // Put vertex B in camera space
             Vector3 camB = CameraSpace(cam, worldV);
 
             // If the vertex is behind the camera, skip it
@@ -205,7 +215,7 @@ void RenderWireframe(SDL_Renderer* renderer, WindowInfo program, Camera* cam, Ob
 ///
 int ClipTriangleAgainstNearPlane(Vector3 inV[3], Vector3 outTris[2][3]) 
 {
-    const float nearPlane = 0.1f; // Must be slightly > 0 to avoid Divide-By-Zero
+    const float nearPlane = 0.001f; // Must be slightly > 0 to avoid Divide-By-Zero
 
     Vector3* insidePoints[3]; int insideCount = 0;
     Vector3* outsidePoints[3]; int outsideCount = 0;
@@ -319,6 +329,12 @@ void AddRenderTriangles(Object* GlobalObjects, int numObjects, Camera* cam, Vect
             for (int k = 0; k < 3; ++k)
             {
                 Vector3 localVert = obj.mesh->vertices[row[k]];
+
+                localVert = (Vector3){
+                    localVert.x * obj.transform.scale.x,
+                    localVert.y * obj.transform.scale.y,
+                    localVert.z * obj.transform.scale.z
+                };
 
                 Vector3 rotatedVert = RotateVectorByQuaternion(localVert, obj.transform.rotation);
 

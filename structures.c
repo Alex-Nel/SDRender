@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 #include <string.h>
 #include <math.h>
 
@@ -15,6 +16,10 @@ Object CreateObject(char* name)
     objTransform.rotation.y = 0;
     objTransform.rotation.z = 0;
     objTransform.rotation.w = 1;
+
+    objTransform.scale.x = 1;
+    objTransform.scale.y = 1;
+    objTransform.scale.z = 1;
 
     Object obj;
     obj.transform = objTransform;
@@ -383,4 +388,112 @@ Color ColorScale(Color color, float brightness)
     result.a = color.a; // alpha stays the same
 
     return result;
+}
+
+
+
+
+
+
+
+
+
+//
+// Function that loads an obj file and makes a mesh out of it
+//
+Mesh *load_obj_mesh(const char *filename, Color color)
+{
+    int vertexCount = 0;
+    int triangleCount = 0;
+
+    // Count 
+    // obj_count(filename, &vertexCount, &triangleCount);
+    FILE *filestart = fopen(filename, "r");
+    char line[512];
+
+    int vcount = 0;
+    int tcount = 0;
+
+    while (fgets(line, sizeof(line), filestart)) {
+
+        if (strncmp(line, "v ", 2) == 0) {
+            vcount++;
+        }
+        else if (strncmp(line, "f ", 2) == 0) {
+            int vertsInFace = 0;
+            char *ptr = strtok(line + 2, " \t\r\n");
+            while (ptr) {
+                vertsInFace++;
+                ptr = strtok(NULL, " \t\r\n");
+            }
+
+            if (vertsInFace >= 3)
+                tcount += vertsInFace - 2;  // triangulation
+        }
+    }
+
+    fclose(filestart);
+
+    vertexCount = vcount;
+    triangleCount = tcount;
+
+
+    // Second pass
+
+    // Allocate mesh + vertices
+    Mesh *mesh = malloc(sizeof(Mesh) + sizeof(Vector3) * vertexCount);
+    mesh->vertexCount = vertexCount;
+    mesh->facesCount = triangleCount;
+    mesh->color = color;
+
+    // Allocate faces
+    mesh->faces = malloc(sizeof(int[3]) * triangleCount);
+
+    FILE *file = fopen(filename, "r");
+    // char line[512];
+
+    int vIndex = 0;
+    int fIndex = 0;
+
+    while (fgets(line, sizeof(line), file)) {
+
+        /* ---- Vertex ---- */
+        if (strncmp(line, "v ", 2) == 0) {
+            Vector3 v;
+            if (sscanf(line + 2, "%f %f %f", &v.x, &v.y, &v.z) == 3) {
+                mesh->vertices[vIndex++] = v;
+            }
+        }
+
+        /* ---- Face ---- */
+        else if (strncmp(line, "f ", 2) == 0) {
+            int indices[64];
+            int count = 0;
+
+            char *ptr = strtok(line + 2, " \t\r\n");
+            while (ptr && count < 64) {
+                int idx = atoi(ptr);
+
+                if (idx > 0)
+                    indices[count++] = idx - 1;
+                else if (idx < 0)
+                    indices[count++] = vertexCount + idx;
+                else
+                    indices[count++] = 0;
+                
+                ptr = strtok(NULL, " \t\r\n");
+            }
+
+            // Fan triangulation
+            for (int i = 1; i + 1 < count; i++) {
+                mesh->faces[fIndex][0] = indices[0];
+                mesh->faces[fIndex][1] = indices[i];
+                mesh->faces[fIndex][2] = indices[i + 1];
+                fIndex++;
+            }
+        }
+    }
+
+    fclose(file);
+    return mesh;
 }

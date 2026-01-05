@@ -51,7 +51,7 @@ int main(int argc, char *argv[])
     printf("SDL Init Success\n");
 
     // Window information, width, height, and FPS
-    WindowInfo program = {800, 800, 120};
+    WindowInfo program = {800, 800, 200};
     
     // SDL Window and Renderer creation
     SDL_Window* window = SDL_CreateWindow("SDRenderer", program.width, program.height, SDL_WINDOW_RESIZABLE);
@@ -100,8 +100,11 @@ int main(int argc, char *argv[])
 
     Color green = {10, 245, 10, 255};
 
-    obj2.mesh = CreateMesh(Cverts, vertexCount, Cfaces, faceCount, green);
+    // obj2.mesh = CreateMesh(Cverts, vertexCount, Cfaces, faceCount, green);
+    obj2.mesh = load_obj_mesh("E:/Programs/Renderer/src/Sword-lowpoly.obj", green);
     obj2.transform.position.x = 1.5f;
+    obj2.transform.rotation = (Quaternion){1, 0, 0, 1};
+    obj2.transform.scale = (Vector3){0.02f, 0.02f, 0.02f};
     printf("Objects2 name is: %s\n", obj2.name);
 
     AddGlobalObject(obj2);
@@ -115,8 +118,8 @@ int main(int argc, char *argv[])
     // -----------------------------------------------------------------------
 
 
-    vertexCount = sizeof(verts) / sizeof(verts[0]);
-    faceCount = sizeof(faces) / sizeof(faces[0]);
+    // vertexCount = sizeof(verts) / sizeof(verts[0]);
+    // faceCount = sizeof(faces) / sizeof(faces[0]);
 
 
 
@@ -250,25 +253,10 @@ int main(int argc, char *argv[])
         SDL_SetRenderDrawColor(renderer, 40, 40, 40, 255);
         SDL_RenderClear(renderer);
 
-        // // rotating/translating the object for animation
-        // for (int i = 0; i < obj1.mesh->vertexCount; i++)
-        // {
-        //     // Uncomment these to rotate the object around an axis
-        //     // rotate_xz(obj1.mesh, &obj1.mesh->vertices[i], -angle);
-        //     // rotate_xy(obj1.mesh, &obj1.mesh->vertices[i], -angle);
-        //     // rotate_yz(obj1.mesh, &obj1.mesh->vertices[i], angle);
-
-        //     // Uncomment to Translate Object in the z direction
-        //     // translateObjectZ(&obj1, 0.00002);
-
-
-        //     // Uncomment if you want to render the individual points
-        //     // RenderPoint(renderer, Screen(Project(obj1, obj1->vertices[i])));
-        // }
-
-        RotateObjectZ(&GlobalObjects[0], -angle);
-        RotateObjectX(&GlobalObjects[0], angle);
-        RotateObjectY(&GlobalObjects[0], -angle);
+        //  Rotate object for an animation
+        // RotateObjectZ(&GlobalObjects[1], -angle);
+        // RotateObjectX(&GlobalObjects[1], angle);
+        // RotateObjectY(&GlobalObjects[1], -angle);
 
 
         // // Render all objects

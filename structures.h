@@ -100,6 +100,7 @@ typedef struct Transform
 {
     Vector3 position;
     Quaternion rotation;
+    Vector3 scale;
 } Transform;
 
 // An object that encapsulates a transform, name, and mesh
@@ -159,17 +160,20 @@ void Camera_Move(Camera* cam, int forward, int right, int up, float speed);
 void Camera_MouseLook(Camera* cam, float dx, float dy, float sensitivity);
 
 
+// Object rotation functions
 void RotateObjectX(Object* obj, float angle);
 void RotateObjectY(Object* obj, float angle);
 void RotateObjectZ(Object* obj, float angle);
 
 
-
-
-
+// vertex rendering helper functions
 int CompareTris(const void* a, const void* b);
 Vector3 CameraSpace(const Camera* cam, Vector3 world);
 Color ColorScale(Color color, float brightness);
+
+
+// .obj file parser
+Mesh* load_obj_mesh(const char *filename, Color color);
 
 
 #endif
