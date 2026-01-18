@@ -1,12 +1,14 @@
-# SDRender
-### A functional software renderer built using SDL.
+# PrismCore
+### A complete 3D engine built using SDL.
 
-The 'structures.h' and 'render.h' headers can be used as a library (SDL is needed for the render.h to function)
+The 'structures.h' header is independent from everything else, so it can be used as a library. <br>
+Both hardwareRender.h and softwareRender.h both need SDL to function properly.
 
-- "render.h" defines the render functions, which are SDL dependent. <br>
-- "structures.h" defines all the 3D and 2D structs which can be used for anything.
+- "structures.h" defines all the 3D and 2D structs which can be used for anything. <br>
+- "hardwareRender.h" defines rendering functions using openGL (3.3). Dependent on SDL <br>
+- "softwareRender.h" defines rendering functions using SDL's built in renderer. Dependent on SDL <br>
 
-Fully supports wireframe rendering and mesh rendering.
+Fully supports mesh and wireframe rendering (and dots rendering in openGL mode).
 
 ### Examples <br>
 - Full Mesh rendering <br>
